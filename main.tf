@@ -81,7 +81,7 @@ resource "proxmox_vm_qemu" "k3s_control_plane" {
   }
 
   network {
-    id     = count.index
+    id     = 0
     model  = "virtio"
     bridge = var.bridge
   }
@@ -155,7 +155,7 @@ resource "proxmox_vm_qemu" "k3s_worker" {
   }
 
   network {
-    id     = count.index
+    id     = 0
     model  = "virtio"
     bridge = var.bridge
   }
