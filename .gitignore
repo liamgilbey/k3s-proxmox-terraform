@@ -17,6 +17,9 @@ ansible/*.retry
 kubeconfig
 *.kubeconfig
 
+# Proxmox info checklist
+docs/pve-info-checklist.md
+
 # SSH keys
 *.pem
 *.key

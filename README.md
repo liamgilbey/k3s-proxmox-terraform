@@ -5,10 +5,11 @@ This project deploys a K3s Kubernetes cluster on Proxmox VE using Terraform and 
 ## Architecture
 
 - **Control Plane**: 1 node (4 vCPU, 8GB RAM)
-- **Workers**: 3 nodes (2 vCPU, 4GB RAM each)
-- **Total Resources**: 10 vCPU, 20GB RAM
+- **Workers**: 3 nodes (2 vCPU, 4GB RAM each) - configurable
+- **Total Resources**: 10 vCPU, 20GB RAM (configurable)
 - **Network**: 192.168.1.180-187
 - **Storage**: ZFS (local-zfs)
+- **Provider**: telmate/proxmox v3.0.2-rc05
 
 ## Prerequisites
 
@@ -28,10 +29,11 @@ sudo apt install jq
 ```
 
 ### On Proxmox:
-- Ubuntu 24.04 cloud template (ID: 9100)
+- Ubuntu 24.04 cloud template (name: `ubuntu-24.04-cloud-tpl`)
 - API token created: `root@pam!terraform`
 - Available resources: 10+ vCPU, 20+ GB RAM
 - ZFS storage pool: `local-zfs`
+- Network bridge: `vmbr0`
 
 ## Quick Start
 
@@ -168,6 +170,29 @@ worker_memory = 8192
 control_plane_count = 3
 ```
 
+**Important:** When changing `worker_count`, you must also update the Ansible inventory to match:
+
+```bash
+# Edit ansible/inventory.yml
+nano ansible/inventory.yml
+```
+
+Update the workers section to match your new worker count. For example, for 5 workers:
+```yaml
+workers:
+  hosts:
+    k3s-worker-1:
+      ansible_host: 192.168.1.185
+    k3s-worker-2:
+      ansible_host: 192.168.1.186
+    k3s-worker-3:
+      ansible_host: 192.168.1.187
+    k3s-worker-4:
+      ansible_host: 192.168.1.188
+    k3s-worker-5:
+      ansible_host: 192.168.1.189
+```
+
 ### Change IP Addresses
 
 Edit `terraform.tfvars`:
@@ -239,6 +264,17 @@ ansible -i ansible/inventory.yml control_plane -a "kubectl get nodes" -b
 
 ## Troubleshooting
 
+### Network Device Configuration
+
+If worker nodes are not getting IP addresses, ensure all VMs use network device ID 0:
+
+```bash
+# Check network configuration in main.tf
+grep -A 3 "network {" main.tf
+```
+
+All VMs should have `network { id = 0 }` to ensure CloudInit properly configures network interfaces.
+
 ### VMs Not Booting
 
 ```bash
@@ -291,6 +327,15 @@ terraform import proxmox_vm_qemu.k3s_control_plane[0] proxmox/<VMID>
 # Remove from state (doesn't delete VM)
 terraform state rm proxmox_vm_qemu.k3s_worker[0]
 ```
+
+### Provider Compatibility
+
+This project uses telmate/proxmox provider v3.0.2-rc05 which has breaking changes from v2.x:
+
+- Use `cpu` block instead of `cpu` argument
+- Network blocks require explicit `id` field
+- CloudInit requires explicit `ide2 cloudinit` drive
+- Serial port requires explicit configuration
 
 ## Destroying the Cluster
 

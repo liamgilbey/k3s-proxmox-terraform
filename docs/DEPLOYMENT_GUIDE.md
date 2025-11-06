@@ -6,10 +6,11 @@ This guide will walk you through deploying a production-ready K3s Kubernetes clu
 
 **What you'll get:**
 - 1 Control Plane node (4 vCPU, 8GB RAM)
-- 3 Worker nodes (2 vCPU, 4GB RAM each)
+- 3 Worker nodes (2 vCPU, 4GB RAM each) - configurable
 - Fully configured K3s cluster
 - Kubeconfig for local access
 - Automated deployment
+- Custom VM IDs starting from 500
 
 ---
 
@@ -39,6 +40,7 @@ Copy each of the provided files into your project directory:
 8. **setup.sh** - Setup script
 9. **ansible/inventory.yml** - Ansible inventory
 10. **ansible/k3s-install.yml** - K3s installation playbook
+11. **docs/pve-info-checklist-example.md** - Proxmox setup checklist template
 
 **Quick way using VS Code:**
 1. Create files in VS Code with the exact names above
@@ -74,6 +76,22 @@ nano terraform.tfvars
 ```hcl
 proxmox_api_token_secret = "your-actual-secret-here"
 ```
+
+**Optional:** Customize your deployment by editing other variables:
+
+```hcl
+# Change cluster size
+worker_count = 2  # Default: 3
+
+# Custom VM IDs (avoid conflicts with existing VMs)
+vm_id_start = 500  # Default: 500
+
+# Customize resources
+control_plane_memory = 4096
+worker_memory = 2048
+```
+
+**Important:** When changing `worker_count`, you must also update the Ansible inventory to match. See the "Customizing Your Deployment" section below.
 
 Save and exit (Ctrl+X, Y, Enter in nano)
 
@@ -123,6 +141,54 @@ The script will:
 8. Save kubeconfig locally 📝
 
 **Expected duration:** 5-10 minutes
+
+### Step 9: Customizing Your Deployment
+
+#### Change Worker Count
+
+If you want to change the number of worker nodes:
+
+1. **Update Terraform configuration:**
+   ```bash
+   nano terraform.tfvars
+   ```
+   Change `worker_count = 3` to your desired number (e.g., `worker_count = 2`)
+
+2. **Update Ansible inventory:**
+   ```bash
+   nano ansible/inventory.yml
+   ```
+   Update the workers section to match your new worker count. For example, for 2 workers:
+   ```yaml
+   workers:
+     hosts:
+       k3s-worker-1:
+         ansible_host: 192.168.1.185
+       k3s-worker-2:
+         ansible_host: 192.168.1.186
+   ```
+
+3. **Redeploy:**
+   ```bash
+   ./deploy.sh
+   ```
+
+#### Change VM IDs
+
+To use custom VM IDs (useful if you have existing VMs):
+
+```hcl
+# In terraform.tfvars
+vm_id_start = 1000  # VMs will be 1000, 1001, 1002, etc.
+```
+
+#### Change IP Addresses
+
+```hcl
+# In terraform.tfvars
+control_plane_ip_start = "192.168.1.190"
+worker_ip_start = "192.168.1.195"
+```
 
 ### Step 8: Access Your Cluster
 
@@ -379,6 +445,31 @@ ssh ubuntu@192.168.1.185 "curl -k https://192.168.1.180:6443"
 
 ---
 
+### Issue: Worker nodes not getting IP addresses
+
+**Check network configuration:**
+```bash
+# Verify all VMs use network device ID 0
+grep -A 3 "network {" main.tf
+```
+
+**Solution:** Ensure all VMs have `network { id = 0 }` in main.tf to ensure CloudInit properly configures network interfaces.
+
+---
+
+### Issue: Provider compatibility errors
+
+This project uses telmate/proxmox provider v3.0.2-rc05 which has breaking changes:
+
+- Use `cpu` block instead of `cpu` argument
+- Network blocks require explicit `id` field
+- CloudInit requires explicit `ide2 cloudinit` drive
+- Serial port requires explicit configuration
+
+**Solution:** Ensure your main.tf uses the latest configuration format.
+
+---
+
 ## 🗑️ Cleanup / Destroy
 
 ### Option 1: Terraform Destroy (Recommended)
@@ -472,9 +563,11 @@ kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/cont
 - [ ] Prerequisites installed (Terraform, Ansible, jq)
 - [ ] SSH key exists and is correct
 - [ ] Proxmox is accessible
-- [ ] Template 9100 exists on Proxmox
+- [ ] Template `ubuntu-24.04-cloud-tpl` exists on Proxmox
 - [ ] IP range 192.168.1.180-187 is available
 - [ ] Sufficient resources (10 vCPU, 20GB RAM)
+- [ ] VM ID range 500-503 is available (or custom vm_id_start configured)
+- [ ] Ansible inventory matches worker_count in terraform.tfvars
 - [ ] ./deploy.sh executed successfully
 - [ ] kubectl get nodes shows all nodes Ready
 - [ ] Test application deployed and working
