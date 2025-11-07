@@ -84,15 +84,15 @@ resource "proxmox_vm_qemu" "k3s_control_plane" {
     id     = 0
     model  = "virtio"
     bridge = var.bridge
+    tag    = var.vlan_tag
   }
-
   # Serial port for console access
   serial {
     id = 0
     type = "socket"
   }
 
-  ipconfig0 = "ip=${cidrhost("192.168.1.0/24", 180 + count.index)}/24,gw=${var.gateway}"
+  ipconfig0 = "ip=${cidrhost(var.control_plane_cidr, var.control_plane_ip_range_start + count.index)}/24,gw=${var.gateway}"
   
   nameserver    = var.nameserver
   searchdomain  = var.searchdomain
@@ -158,6 +158,7 @@ resource "proxmox_vm_qemu" "k3s_worker" {
     id     = 0
     model  = "virtio"
     bridge = var.bridge
+    tag    = var.vlan_tag
   }
 
   # Serial port for console access
@@ -166,7 +167,7 @@ resource "proxmox_vm_qemu" "k3s_worker" {
     type = "socket"
   }
 
-  ipconfig0 = "ip=${cidrhost("192.168.1.0/24", 185 + count.index)}/24,gw=${var.gateway}"
+  ipconfig0 = "ip=${cidrhost(var.worker_cidr, var.worker_ip_range_start + count.index)}/24,gw=${var.gateway}"
   
   nameserver    = var.nameserver
   searchdomain  = var.searchdomain

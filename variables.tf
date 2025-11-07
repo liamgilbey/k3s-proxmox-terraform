@@ -101,10 +101,16 @@ variable "control_plane_disk_size" {
   default     = "30G"
 }
 
-variable "control_plane_ip_start" {
-  description = "Starting IP for control plane nodes"
+variable "control_plane_cidr" {
+  description = "CIDR for control plane nodes"
   type        = string
-  default     = "192.168.1.180"
+  default     = "192.168.1.0/24"
+}
+
+variable "control_plane_ip_range_start" {
+  description = "IP block range for control plane nodes"
+  type        = number
+  default     = 80
 }
 
 # Worker Configuration
@@ -132,10 +138,16 @@ variable "worker_disk_size" {
   default     = "30G"
 }
 
-variable "worker_ip_start" {
-  description = "Starting IP for worker nodes"
+variable "worker_cidr" {
+  description = "CIDR for worker nodes"
   type        = string
-  default     = "192.168.1.185"
+  default     = "192.168.1.0/24"
+}
+
+variable "worker_ip_range_start" {
+  description = "IP block range for worker nodes"
+  type        = number
+  default     = 80
 }
 
 # K3s Configuration
@@ -150,4 +162,10 @@ variable "k3s_token" {
   type        = string
   default     = ""
   sensitive   = true
+}
+
+variable "vlan_tag" {
+  description = "VLAN tag for VMs"
+  type        = number
+  default     = 0
 }
