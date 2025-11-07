@@ -1,47 +1,57 @@
 ---
 - name: Install ArgoCD via Helm
-  hosts: k3s_control_plane
+  hosts: control_plane
   become: yes
+  vars:
+    ansible_python_interpreter: /usr/bin/python3
   tasks:
-    - name: Install community.kubernetes collection
-      ansible.builtin.command:
-        cmd: ansible-galaxy collection install community.kubernetes
-      changed_when: false
+    - name: Install required packages
+      ansible.builtin.apt:
+        name:
+          - python3-pip
+        state: present
+        update_cache: yes
 
     - name: Add ArgoCD Helm repository
-      community.kubernetes.helm_repository:
-        name: argo
-        repo_url: https://argoproj.github.io/argo-helm
+      ansible.builtin.shell:
+        cmd: helm repo add argo https://argoproj.github.io/argo-helm
+      args:
+        executable: /bin/bash
 
-    - name: Install ArgoCD
-      community.kubernetes.helm:
-        name: argocd
-        chart_ref: argo/argo-cd
-        release_namespace: argocd
-        create_namespace: yes
-        values:
-          server:
-            service:
-              type: LoadBalancer
+    - name: Update Helm repositories
+      ansible.builtin.shell:
+        cmd: helm repo update
+      args:
+        executable: /bin/bash
+
+    - name: Install ArgoCD using Helm
+      ansible.builtin.shell:
+        cmd: |
+          helm upgrade --install argocd argo/argo-cd \
+            --namespace argocd \
+            --create-namespace \
+            --set server.service.type=LoadBalancer
+      args:
+        executable: /bin/bash
 
     - name: Wait for ArgoCD pods to be ready
-      community.kubernetes.k8s_info:
-        kind: Pod
-        namespace: argocd
-        label_selectors:
-          - app.kubernetes.io/name=argocd-server
-      register: argocd_pods
-      until: argocd_pods.resources | length > 0 and argocd_pods.resources | selectattr('status.phase', 'equalto', 'Running') | list | length == argocd_pods.resources | length
+      ansible.builtin.shell:
+        cmd: |
+          kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=argocd-server -n argocd --timeout=300s
+      args:
+        executable: /bin/bash
+      register: wait_result
+      until: wait_result.rc == 0
       retries: 30
       delay: 10
 
     - name: Get ArgoCD admin password
-      community.kubernetes.k8s:
-        namespace: argocd
-        kind: Secret
-        name: argocd-initial-admin-secret
-        state: revealed
-      register: argocd_secret
+      ansible.builtin.shell:
+        cmd: |
+          kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d
+      args:
+        executable: /bin/bash
+      register: argocd_password
 
     - name: Display ArgoCD access information
       debug:
@@ -51,7 +61,7 @@
           Access ArgoCD UI:
           - URL: http://{{ ansible_host }}:8080 (if using port-forward)
           - Username: admin
-          - Password: {{ argocd_secret.resource.data.password | b64decode }}
+          - Password: {{ argocd_password.stdout }}
           
           To access via port-forward:
           kubectl port-forward svc/argocd-server -n argocd 8080:80
