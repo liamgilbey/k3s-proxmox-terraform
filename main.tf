@@ -41,7 +41,7 @@ resource "proxmox_vm_qemu" "k3s_control_plane" {
   count = var.control_plane_count
 
   name        = "k3s-cp-${count.index + 1}"
-  target_node = var.proxmox_node
+  target_node = var.control_plane_nodes[count.index]
   clone       = var.template_id
   full_clone  = true
   vmid        = var.vm_id_start + count.index
@@ -115,7 +115,7 @@ resource "proxmox_vm_qemu" "k3s_worker" {
   count = var.worker_count
 
   name        = "k3s-worker-${count.index + 1}"
-  target_node = var.proxmox_node
+  target_node = var.worker_nodes[count.index]
   clone       = var.template_id
   full_clone  = true
   vmid        = var.vm_id_start + var.control_plane_count + count.index

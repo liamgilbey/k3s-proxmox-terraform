@@ -22,10 +22,14 @@ variable "ssh_public_key" {
   default     = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKKdSE8dhEHhDNpMC20mLDMful5dwSOnxpswCtUFQUX7 victus laptop primary key"
 }
 
-variable "proxmox_node" {
-  description = "Proxmox node name"
-  type        = string
-  default     = "proxmox"
+variable "control_plane_nodes" {
+  description = "List of Proxmox nodes for each control-plane VM"
+  type        = list(string)
+}
+
+variable "worker_nodes" {
+  description = "List of Proxmox nodes for each worker VM"
+  type        = list(string)
 }
 
 variable "template_id" {
