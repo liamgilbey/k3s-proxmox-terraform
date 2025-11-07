@@ -9,8 +9,16 @@
       ansible.builtin.apt:
         name:
           - python3-pip
+          - curl
         state: present
         update_cache: yes
+
+    - name: Install Helm
+      ansible.builtin.shell:
+        cmd: |
+          curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+      args:
+        executable: /bin/bash
 
     - name: Add ArgoCD Helm repository
       ansible.builtin.shell:
@@ -27,7 +35,7 @@
     - name: Install ArgoCD using Helm
       ansible.builtin.shell:
         cmd: |
-          helm upgrade --install argocd argo/argo-cd \
+          KUBECONFIG=/etc/rancher/k3s/k3s.yaml helm upgrade --install argocd argo/argo-cd \
             --namespace argocd \
             --create-namespace \
             --set server.service.type=LoadBalancer
