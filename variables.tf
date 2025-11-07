@@ -173,3 +173,13 @@ variable "vlan_tag" {
   type        = number
   default     = 0
 }
+
+variable "control_plane_macs" {
+  description = "List of MAC addresses for control-plane VMs"
+  type        = list(string)
+}
+
+variable "worker_macs" {
+  description = "List of MAC addresses for worker VMs"
+  type        = list(string)
+}

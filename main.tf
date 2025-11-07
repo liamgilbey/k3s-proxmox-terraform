@@ -85,6 +85,7 @@ resource "proxmox_vm_qemu" "k3s_control_plane" {
     model  = "virtio"
     bridge = var.bridge
     tag    = var.vlan_tag
+    macaddr = var.control_plane_macs[count.index]
   }
   # Serial port for console access
   serial {
@@ -159,6 +160,7 @@ resource "proxmox_vm_qemu" "k3s_worker" {
     model  = "virtio"
     bridge = var.bridge
     tag    = var.vlan_tag
+    macaddr = var.worker_macs[count.index]
   }
 
   # Serial port for console access
